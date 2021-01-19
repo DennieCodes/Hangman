@@ -1,5 +1,7 @@
-import React, { Component } from "react";
+import React, { useState } from "react";
+import AlphaButtons from "./AlphaButtons";
 import "./Hangman.css";
+
 import img0 from "./0.jpg";
 import img1 from "./1.jpg";
 import img2 from "./2.jpg";
@@ -8,93 +10,83 @@ import img4 from "./4.jpg";
 import img5 from "./5.jpg";
 import img6 from "./6.jpg";
 import { randomWord } from './words';
-import AlphaButtons from "./AlphaButtons";
 
-class Hangman extends Component {
-  /** by default, allow 6 guesses and use provided gallows images. */
-  static defaultProps = {
-    images: [img0, img1, img2, img3, img4, img5, img6]
-  };
+const Hangman = () => {
+  //Set up state, handler and destructured items
+  const [ hangman, hangmanSet ] = useState({ 
+    nWrong: 0, 
+    guessed: new Set(), 
+    answer: randomWord()
+  });
 
-  constructor(props) {
-    super(props);
-    this.state = { 
-      nWrong: 0,
-      guessed: new Set(), 
-      answer: randomWord()
-    };    
-    this.handleGuess = this.handleGuess.bind(this);
-    this.restart = this.restart.bind(this);
+  const { nWrong, guessed, answer } = hangman;
+
+  const images = [img0, img1, img2, img3, img4, img5, img6];
+
+  // Compares the number of guesses against the length of the word in answer
+  const wrongCounter = () => nWrong === answer.length;
+
+  // Returns the parts of the answer that have been guessed by the user
+  const parseAnswer = () => {
+    return answer.split("")
+      .map(ltr => (guessed.has(ltr) ? ltr : "_"));
   }
 
-  restart(evt) {
-    this.setState({
+  // Compares the user's guessed word agains the randomly generated word
+  const guessedCorrect = () => {
+    const parsedAnswer = parseAnswer();
+    return parsedAnswer.indexOf("_") === -1 && parsedAnswer.length === answer.length
+      ? true : false;    
+  }
+
+  // Returns either the answer or the incomplete guessed letters
+  const guessedWord = () => wrongCounter() ? answer : parseAnswer();
+
+  // Function which responds to user guesses and updates state  
+  const handleGuess = evt => {
+    let ltr = evt.target.value;
+
+    hangmanSet({
+      ...hangman,
+      guessed: guessed.add(ltr),
+      nWrong: nWrong + (answer.includes(ltr) ? 0 : 1)
+    })
+  }
+
+  // Restarts the game by reseting state
+  const restart = evt => {
+    hangmanSet({
       nWrong: 0,
       guessed: new Set(),
       answer: randomWord()
     });
   }
 
-  /** guessedWord: show current-state of word: if guessed letters are {a,p,e}, show "app_e" for "apple" */
-  guessedWord() {
-    return this.wrongCounter() ? this.state.answer : this.parseAnswer();
-  }
+  // Set up conditional display messages
+  const prompt = wrongCounter() ? "Too many guesses.  You lose!" : 
+    guessedCorrect() ? "You win!" :
+    `Number of wrong guesses: ${nWrong}`;
+  
+  const image = images[wrongCounter() ? answer.length : nWrong];
+  const altText = `${nWrong} wrong guess(es)`;
 
-  guessedCorrect() {
-    const parsedAnswer = this.parseAnswer();
-    const correct = parsedAnswer.indexOf("_") === -1 && parsedAnswer.length === this.state.answer.length
-      ? true : false;    
-
-    return correct;
-  }
-
-  parseAnswer() {
-    return this.state.answer.split("")
-      .map(ltr => (this.state.guessed.has(ltr) ? ltr : "_"));
-  }
-
-  /** handleGuest: handle a guessed letter:
-    - add to guessed letters
-    - if not in answer, increase number-wrong guesses
-  */
-  handleGuess(evt) {
-    let ltr = evt.target.value;
-    this.setState(st => ({
-      guessed: st.guessed.add(ltr),
-      nWrong: st.nWrong + (st.answer.includes(ltr) ? 0 : 1)
-    }));
-  }
-
-  wrongCounter() {
-    return this.state.nWrong === this.state.answer.length;
-  }
-
-  /** render: render game */
-  render() {
-    const prompt = this.wrongCounter() ? "Too many guesses.  You lose!" : 
-      this.guessedCorrect() ? "You win!" :
-      `Number of wrong guesses: ${this.state.nWrong}`;
-    const image = this.props.images[this.wrongCounter() ? this.state.answer.length : this.state.nWrong];
-    const altText = `${this.state.nWrong} wrong guess(es)`;
-    
-    return (
-      <div className='Hangman'>
-        <h1>Hangman</h1>
-        <img src={image} alt={altText}/>
-        <p className='Hangman-prompt'>{prompt}</p>
-        <p className='Hangman-word'>{this.guessedWord()}</p>
-        <p>
-          <AlphaButtons 
-            gameOver={this.wrongCounter() || this.guessedCorrect() ? true : false} 
-            handler={this.handleGuess}
-            guessed={this.state.guessed}
-          />
-        </p>
-        
-        <button className="Hangman-restart" onClick={this.restart}>Restart</button>
-      </div>
-    );
-  }
-}
+  return (
+    <div className='Hangman'>
+      <h1>Hangman</h1>
+      <img src={image} alt={altText}/>
+      <p className='Hangman-prompt'>{prompt}</p>
+      <p className='Hangman-word'>{guessedWord()}</p>
+      <p>
+        <AlphaButtons 
+          gameOver={wrongCounter() || guessedCorrect() ? true : false} 
+          handler={handleGuess}
+          guessed={guessed}
+        />
+      </p>
+      
+      <button className="Hangman-restart" onClick={restart}>Restart</button>
+    </div>
+  );
+};
 
 export default Hangman;
